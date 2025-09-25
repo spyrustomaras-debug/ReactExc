@@ -1,10 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../../app/hooks";
 import { fetchPosts, createPost, deletePost, updatePost } from "./postSlice";
+import DeleteModal from "../../components/DeleteModal";
+import UpdateModal from "../../components/UpdateModal";
 
 const PostList: React.FC = () => {
   const dispatch = useAppDispatch();
   const { posts, loading, error } = useAppSelector((state) => state.posts);
+
+    // search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debounceQuery, setDebounceQuery] = useState("");
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const postsPerPage = 5;
 
   const [showForm, setShowForm] = useState(false);
   const [title, setTitle] = useState("");
@@ -19,6 +28,20 @@ const PostList: React.FC = () => {
   const [postToUpdate, setPostToUpdate] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editBody, setEditBody] = useState("");
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebounceQuery(searchQuery)
+    }, 300);
+
+    return () => clearTimeout(handler)
+  },[debounceQuery])
+
+
+  // Reset page to 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
 
    // ---- UPDATE ----
   const confirmToUpdate = (id: number, currentTitle: string, currentBody: string) => {
@@ -58,7 +81,6 @@ const PostList: React.FC = () => {
     }
   }
 
-
   const cancelDelete = () => {
     setPostToDelete(null);
     setShowDeleteModal(false);
@@ -79,6 +101,25 @@ const PostList: React.FC = () => {
     setShowForm(false)
   }
 
+  // Filtered Posts based on searchQuery
+  const filteredPosts = posts.filter((post) => {
+    return (
+      post.title.toLowerCase().includes(debounceQuery.toLowerCase()) ||
+      post.body.toLowerCase().includes(debounceQuery.toLowerCase())
+    );
+  });
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const indexOfLastPost = currentPage * postsPerPage;
+  const indexOfFirstPost = indexOfLastPost - postsPerPage;
+  const currentPosts = filteredPosts.slice(indexOfFirstPost, indexOfLastPost);
+
+
+  // // Pagination State
+  // const [currentPage, setCurrentPage] = useState(1);
+  // const postsPerPage = 5; // change as needed
+
   return (
     <div>
         <button onClick={() => setShowForm(!showForm)}>
@@ -92,8 +133,16 @@ const PostList: React.FC = () => {
             </form>
         )}
       <h2>Posts</h2>
+      {/* Search Input */}
+      <input
+        type="text"
+        placeholder="Search Posts..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        data-testid="search-input"
+      />
       <ul data-testid="post-list">
-        {posts.map((post) => (
+        {currentPosts.map((post) => (
           <li key={post.id} data-testid="post-item">
             <strong>{post.title}</strong>
             <p>{post.body}</p>
@@ -101,100 +150,34 @@ const PostList: React.FC = () => {
             <button onClick={() => confirmToDelete(post.id)}>Delete</button>
           </li>
         ))}
+        {currentPosts.length === 0 && <p>No posts found.</p>}
       </ul>
 
-      {showDeleteModal && (
-        <div
-          data-testid="delete-modal"
-          className="modal-backdrop"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="modal-content"
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "300px",
-              textAlign: "center",
-              boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-            }}
-          >
-            <p>Are you sure you want to delete this post?</p>
-            <div style={{ display: "flex", justifyContent: "space-around", marginTop: "15px" }}>
-              <button onClick={handleDelete}>Yes</button>
-              <button onClick={cancelDelete}>Cancel</button>
-            </div>
-          </div>
+       {/* Pagination Controls */}
+      {totalPages > 1 && (
+        <div>
+          <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1}>Prev</button>
+          <span> Page {currentPage} of {totalPages} </span>
+          <button onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages}>Next</button>
         </div>
       )}
 
-      {showUpdateModal && (
-        <div
-          data-testid="update-modal"
-          className="modal-backdrop"
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            className="modal-content"
-            style={{
-              backgroundColor: "#fff",
-              padding: "20px",
-              borderRadius: "8px",
-              width: "300px",
-              textAlign: "center",
-              boxShadow: "0 4px 8px rgba(0,0,0,0.2)",
-            }}
-          >
-            <h3>Edit Post</h3>
-            <input
-              placeholder="Title"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              style={{ width: "100%", marginBottom: "10px" }}
-            />
-            <textarea
-              placeholder="Body"
-              value={editBody}
-              onChange={(e) => setEditBody(e.target.value)}
-              style={{ width: "100%", marginBottom: "10px" }}
-            ></textarea>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-around",
-                marginTop: "15px",
-              }}
-            >
-              <button onClick={handleUpdate}>Update</button>
-              <button onClick={cancelUpdate}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
 
+      <DeleteModal
+        isOpen={showDeleteModal}
+        onConfirm={handleDelete}
+        onCancel={cancelDelete}
+      />
+
+      <UpdateModal
+        isOpen={showUpdateModal}
+        title={editTitle}
+        body={editBody}
+        onChangeTitle={setEditTitle}
+        onChangeBody={setEditBody}
+        onUpdate={handleUpdate}
+        onCancel={cancelUpdate}
+      />
     </div>
   );
 };

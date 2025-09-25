@@ -80,7 +80,7 @@ const postSlice = createSlice({
       })
       .addCase(fetchPosts.fulfilled, (state, action) => {
         state.loading = false;
-        state.posts = action.payload.slice(0, 5); // limit to 5
+        state.posts = action.payload; // limit to 5
       })
       .addCase(fetchPosts.rejected, (state, action) => {
         state.loading = false;

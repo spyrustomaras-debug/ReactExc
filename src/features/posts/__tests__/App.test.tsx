@@ -5,7 +5,10 @@ import { store } from "../../../app/store";
 import App from "../../../App";
 import axios from "axios";
 import PostList from "../PostList";
-import exp from "constants";
+import userEvent from "@testing-library/user-event";
+
+import { userInfo } from "os";
+
 
 jest.mock("axios");
 const mockedAxios = axios as jest.Mocked<typeof axios>;
@@ -14,7 +17,7 @@ describe("App component", () => {
     it("renders the heading", () => {
         render(
             <Provider store={store}>
-                <App/>
+                    <App/>
             </Provider>
         )
         expect(screen.getByText("JSONPlaceholder with Redux")).toBeInTheDocument();
@@ -84,6 +87,37 @@ describe("App component", () => {
         // check if form is visible
         expect(screen.getByPlaceholderText('Title')).toBeInTheDocument();
         expect(screen.getByPlaceholderText('Body')).toBeInTheDocument();
+
+        const cancel = await screen.findByText("Cancel");
+        expect(cancel).toBeInTheDocument();
+        fireEvent.click(cancel);
+        expect(button).toBeInTheDocument();
+    });
+
+    it("toggles post form and create a post after that", async() => {
+         mockedAxios.get.mockResolvedValueOnce({
+            data: [
+                {id: 1, title: "Post 1", body:"Body 1"},
+                {id: 2, title: "Post 2", body:"Body 2"},
+            ],
+        });
+
+        render(
+            <Provider store={store}>
+                <PostList/>
+            </Provider>
+        );
+        const button = await screen.findByText("Create Post");
+        fireEvent.click(button);
+
+        const title = screen.getByPlaceholderText("Title");
+        const body = screen.getByPlaceholderText("Body");
+
+        await userEvent.type(title, "My Test Post");
+        await userEvent.type(body, "This is the body of the post.");
+
+        expect(title).toHaveValue("My Test Post");
+        expect(body).toHaveValue("This is the body of the post.");
     });
 
     it("renders post after creation", async () => {
@@ -250,7 +284,6 @@ describe("App component", () => {
         )
 
         await waitFor(() => expect(screen.queryByTestId("loading")).not.toBeInTheDocument());
-
 
         // Click update on first post
         fireEvent.click(screen.getAllByText('Edit')[0]);

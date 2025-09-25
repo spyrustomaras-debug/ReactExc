@@ -34,7 +34,7 @@ describe("postSlice", () =>{
         ];
         const action = { type: fetchPosts.fulfilled.type, payload: posts };
         const state = reducer(initialState, action);
-        expect(state.posts.length).toBe(5);
+        expect(state.posts.length).toBe(6);
         expect(state.loading).toBe(false)
         expect(state.posts[0].title).toBe("Post 1")
     });

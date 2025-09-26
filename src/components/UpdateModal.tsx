@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import Modal from "./Modal";
 
 interface UpdateModalProps {
@@ -20,9 +20,13 @@ const UpdateModal: React.FC<UpdateModalProps> = ({
   onUpdate,
   onCancel,
 }) => {
+
+   
+
   return (
     <Modal isOpen={isOpen} onClose={onCancel} testId="update-modal">
       <h3>Edit Post</h3>
+
       <input
         placeholder="Title"
         value={title}

@@ -20,11 +20,16 @@ const initialState: PostState = {
   error: null,
 };
 
-export const createPost = createAsyncThunk("posts/createPost",async(post: {title: string, body:string}) => {
-        const response = await axios.post("https://jsonplaceholder.typicode.com/posts",post);
-        return response.data;
-    }
-)
+export const createPost = createAsyncThunk<Post, { title: string; body: string }>(
+  "posts/createPost",
+  async (post) => {
+    const response = await axios.post<Post>(
+      "https://jsonplaceholder.typicode.com/posts",
+      post
+    );
+    return response.data;
+  }
+);
 
 // Thunk to delete a post
 export const deletePost = createAsyncThunk(
@@ -34,7 +39,6 @@ export const deletePost = createAsyncThunk(
     return postId; // return the deleted post id to remove it from state
   }
 );
-
 
 // Thunk to fetch posts
 export const fetchPosts = createAsyncThunk("posts/fetchPosts", async () => {
@@ -61,12 +65,20 @@ export const updatePost = createAsyncThunk<Post, Post>(
       );
       return response.data;
     } catch (error) {
-      return "error message";
+      return rejectWithValue("Failed to update post")
     }
   }
 );
 
+const setLoading = (state: PostState) => {
+  state.loading = true;
+  state.error = null;
+}
 
+const setError = (state: PostState, action: any) => {
+  state.loading = false;
+  state.error = action.payload || action.error?.message || "Something went wrong"
+}
 
 const postSlice = createSlice({
   name: "posts",
@@ -74,28 +86,21 @@ const postSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(fetchPosts.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(fetchPosts.pending, setLoading)
       .addCase(fetchPosts.fulfilled, (state, action) => {
         state.loading = false;
         state.posts = action.payload; // limit to 5
       })
-      .addCase(fetchPosts.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.error.message || "Failed to fetch posts";
-      })
+      .addCase(fetchPosts.rejected, setError)
+      .addCase(createPost.pending, setLoading)
       .addCase(createPost.fulfilled, (state, action) => {
         state.posts.unshift(action.payload);
       })
+      .addCase(createPost.rejected, setError)
       .addCase(deletePost.fulfilled, (state, action) => {
         state.posts = state.posts.filter(post => post.id !== action.payload);
       })
-      .addCase(updatePost.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
+      .addCase(updatePost.pending, setLoading)
       .addCase(updatePost.fulfilled, (state, action: PayloadAction<Post>) => {
         state.loading = false;
 
@@ -108,10 +113,7 @@ const postSlice = createSlice({
           state.posts.push(action.payload);
         }
       })
-      .addCase(updatePost.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
-      });
+      .addCase(updatePost.rejected, setError);
   },
 });
 

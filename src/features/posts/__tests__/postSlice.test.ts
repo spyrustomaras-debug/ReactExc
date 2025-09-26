@@ -1,4 +1,4 @@
-import reducer, { createPost, fetchPosts, deletePost } from "../postSlice";
+import reducer, { createPost, fetchPosts, deletePost, updatePost, Post } from "../postSlice";
 import axios from "axios";
 import { AnyAction } from "@reduxjs/toolkit";
 
@@ -58,7 +58,24 @@ describe("postSlice", () =>{
         const action: AnyAction = {type: createPost.fulfilled.type, payload: newPost};
         const state = reducer(initialState, action);
         expect(state.posts[0]).toEqual(newPost);
-    })
+    });
+
+    it("should handle createPost.pending", () => {
+        const action = { type: createPost.pending.type };
+        const state = reducer(initialState, action);
+        expect(state).toEqual({posts:[], loading: true, error:null})
+    });
+
+    it("should handle createPost.rejected", () => {
+        const action = {
+            type: createPost.rejected.type,
+            payload: "Failed to create post",
+            error: { message: "Network Error" }
+        };
+        const state = reducer(initialState, action);
+        expect(state.loading).toBe(false);
+        expect(state.error).toBe("Failed to create post");   
+    });
 
     it("should handle deletePost.fulfilled", () => {
         const stateWithPosts = {
@@ -74,5 +91,54 @@ describe("postSlice", () =>{
         const state = reducer(stateWithPosts, action);
         expect(state.posts).toHaveLength(1);
         expect(state.posts[0].id).toBe(2);
+    });
+
+    it("should handle updatePost.pending", () => {
+        const initialState = { posts: [], loading: false, error: null };
+
+        const existingPosts: Post[] = [
+            { id: 1, title: "Post 1", body: "Body 1" },
+            { id: 2, title: "Post 2", body: "Body 2" },
+        ];
+        const action: AnyAction = {type: updatePost.pending.type};
+        const state = reducer({...initialState, posts: existingPosts}, action);
+        expect(state).toEqual({posts: existingPosts, loading: true, error: null});
+    });
+
+    it("should handle updatePost.fulfilled (new post if not exist)", () => {
+        const initialState = { posts: [], loading: false, error: null };
+
+        const existingPosts: Post[] = [
+            { id: 1, title: "Post 1", body: "Body 1" },
+            { id: 2, title: "Post 2", body: "Body 2" },
+        ];
+
+        const newPost: Post = { id: 3, title: "New Post", body: "New Body" };
+        const action: AnyAction = { type: updatePost.fulfilled.type, payload: newPost };
+        const state = reducer({ ...initialState, posts: existingPosts }, action);
+
+        expect(state.posts.length).toBe(3);
+        expect(state.posts[2]).toEqual(newPost); // new post pushed
+        expect(state.loading).toBe(false);
+        expect(state.error).toBeNull();
+  });
+
+  it("should handle updatePost.rejected", () => {
+
+        const initialState = { posts: [], loading: false, error: null };
+
+        const existingPosts: Post[] = [
+            { id: 1, title: "Post 1", body: "Body 1" },
+            { id: 2, title: "Post 2", body: "Body 2" },
+        ];
+
+        const action: AnyAction = {
+        type: updatePost.rejected.type,
+        payload: "Failed to update post",
+        error: { message: "Network Error" },
+        };
+        const state = reducer({ ...initialState, posts: existingPosts }, action);
+        expect(state.loading).toBe(false);
+        expect(state.error).toBe("Failed to update post");
     });
 });

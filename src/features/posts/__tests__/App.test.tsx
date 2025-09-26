@@ -307,4 +307,102 @@ describe("App component", () => {
         expect(await screen.findByText("Update Post")).toBeInTheDocument();
         expect(await screen.findByText("Update Body")).toBeInTheDocument();
     });
+
+    it("Show and hide comments for a Post", async() => {
+        mockedAxios.get.mockResolvedValueOnce({
+            data: [
+                {id: 1, title:"Post 1", body: "Body 1"},
+            ],
+        });
+
+        // Mock comments API
+        mockedAxios.get.mockResolvedValueOnce({
+            data: [
+                {
+                    postId: 1,
+                    id: 101,
+                    name: "John Doe",
+                    email: "john@example.com",
+                    body: "This is a test comment",
+                },
+            ],
+        });
+
+        render(
+            <Provider store={store}>
+                <App />
+            </Provider>
+        );
+
+        // Wait for posts to appear
+        expect(await screen.findByText("Post 1")).toBeInTheDocument();
+
+        // Click show comments
+        const toggleButton = screen.getByText("Show Comments");
+        fireEvent.click(toggleButton);
+
+        // Wait for posts to appear
+        expect(await screen.findByText("John Doe")).toBeInTheDocument();
+        render(
+            <Provider store={store}>
+                <App />
+            </Provider>
+        );
+
+    });
+
+    it("shows loading state while fetching comments", async () => {
+        mockedAxios.get.mockResolvedValueOnce({
+            data: [{ id: 1, title: "Post 1", body: "Body 1" }],
+        });
+
+        // Delay comments response
+        mockedAxios.get.mockImplementationOnce(() =>
+            new Promise((resolve) =>
+                setTimeout(
+                    () =>
+                        resolve({
+                            data: [],
+                        }),
+                    100
+                )
+            )
+        );
+
+        render(
+            <Provider store={store}>
+                <App />
+            </Provider>
+        );
+
+        expect(await screen.findByText("Post 1")).toBeInTheDocument();
+
+        // Show comments
+        fireEvent.click(screen.getByText("Show Comments"));
+
+        // Loading text should appear
+        expect(await screen.findByText("Loading comments...")).toBeInTheDocument();
+    })
+
+    it("shows error state if fetching comments fails", async () => {
+        mockedAxios.get.mockResolvedValueOnce({
+            data: [{ id: 1, title: "Post 1", body: "Body 1" }],
+        });
+
+        // Reject comments request
+        mockedAxios.get.mockRejectedValueOnce(new Error("Failed to fetch comments"));
+
+        render(
+            <Provider store={store}>
+                <App />
+            </Provider>
+        );
+
+        expect(await screen.findByText("Post 1")).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText("Show Comments"));
+
+        // Wait for error message
+        expect(await screen.findByText(/failed to fetch comments/i)).toBeInTheDocument();
+    });
 })
